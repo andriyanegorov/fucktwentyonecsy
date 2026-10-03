@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#000000">
+    <title>FUCK21CSY</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="FUCK21CSY — главная">
+        <img class="brand__logo" src="logo.jpg" alt="Логотип FUCK21CSY">
+        <span class="brand__name">FUCK21CSY</span>
+      </a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <button class="site-nav__link" type="button" data-artist-group="artists" aria-pressed="true">Артисты</button>
+        <button class="site-nav__link" type="button" data-artist-group="designers" aria-pressed="false">Дизайнеры</button>
+      </nav>
+    </header>
+    <main>
+      <section class="artists-section" id="artists" aria-labelledby="artist-name">
+        <div class="artist-controls" role="group" aria-label="Переключение артистов">
+          <button class="artist-control" type="button" data-artist-previous aria-label="Предыдущий артист">&#8592;</button>
+          <span class="artist-position" aria-live="polite">01 / 02</span>
+          <button class="artist-control" type="button" data-artist-next aria-label="Следующий артист">&#8594;</button>
+        </div>
+        <div class="artist-content">
+        <div class="artist-stage">
+          <div class="artist-display">
+            <h1 class="artist-name" id="artist-name">HWorld</h1>
+            <div class="artist-portrait">
+              <span class="artist-name-background" aria-hidden="true">HWorld</span>
+              <img class="artist-image" id="artist-image" src="hworld.png" alt="Артист HWorld">
+            </div>
+          </div>
+        </div>
+        <iframe class="artist-playlist" frameborder="0" allow="clipboard-write" style="border:none;border-radius: 31px;width: 357px;height: 275px;scale: 1;margin-top: 40px;" width="500" height="500" src="https://music.yandex.ru/iframe/playlist/soadcrew/1001">Слушайте <a href="https://music.yandex.ru/playlists/4b09554c-49f3-ba37-987a-caea13fd0538?utm_source=web&utm_medium=copy_link">HWorld</a> — <a href="https://music.yandex.ru/users/soadcrew">soadcrew</a> на Яндекс Музыке</iframe>
+        <p class="artist-discography" hidden>У артиста нету дискографии.</p>
+        <nav class="artist-socials" aria-label="Ссылки артиста" hidden>
+          <a class="artist-social-link" data-artist-link="telegram" target="_blank" rel="noopener noreferrer" title="Telegram" aria-label="Telegram артиста">
+            <img class="artist-social-icon" src="tg.png" alt="" aria-hidden="true">
+          </a>
+          <a class="artist-social-link" data-artist-link="music" target="_blank" rel="noopener noreferrer" title="Яндекс Музыка" aria-label="Яндекс Музыка артиста">
+            <img class="artist-social-icon" src="ym.webp" alt="" aria-hidden="true">
+          </a>
+        </nav>
+        <div class="designer-telegram" hidden>
+          <div class="designer-telegram__posts" aria-label="Публикации dvdFRITE в Telegram"></div>
+          <a class="artist-social-link designer-telegram__link" href="https://t.me/dvdfrite" target="_blank" rel="noopener noreferrer" title="Telegram" aria-label="Канал dvdFRITE в Telegram">
+            <img class="artist-social-icon" src="tg.png" alt="" aria-hidden="true">
+          </a>
+        </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
