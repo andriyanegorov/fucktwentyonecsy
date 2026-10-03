@@ -30,6 +30,7 @@ const artistDisplay = document.querySelector(".artist-display");
 const artistContent = document.querySelector(".artist-content");
 const artistControls = document.querySelector(".artist-controls");
 const artistGroupButtons = document.querySelectorAll("[data-artist-group]");
+const siteIntro = document.querySelector(".site-intro");
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const animationDuration = prefersReducedMotion ? 600 : 1400;
 const groupTransitionDuration = prefersReducedMotion ? 120 : 280;
@@ -40,6 +41,79 @@ let transitionInProgress = false;
 let groupTransitionInProgress = false;
 let telegramRefreshTimer = null;
 let telegramRequestId = 0;
+let preloadedTelegramItems = null;
+const preloadedImages = new Map();
+
+function preloadImage(source) {
+	if (preloadedImages.has(source)) {
+		return preloadedImages.get(source).ready;
+	}
+
+	const image = new Image();
+	image.referrerPolicy = "no-referrer";
+	const entry = {
+		image,
+		ready: new Promise((resolve) => {
+			image.addEventListener("load", () => resolve(true), { once: true });
+			image.addEventListener("error", () => resolve(false), { once: true });
+			image.src = source;
+			if (image.complete) {
+				resolve(image.naturalWidth > 0);
+			}
+		}),
+	};
+	preloadedImages.set(source, entry);
+	return entry.ready;
+}
+
+async function fetchTelegramItems(channel) {
+	const feedUrl = `https://tg.i-c-a.su/rss/${encodeURIComponent(channel)}`;
+	const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`;
+	const response = await fetch(apiUrl, { cache: "no-store" });
+	if (!response.ok) {
+		throw new Error(`Telegram feed request failed: ${response.status}`);
+	}
+
+	const result = await response.json();
+	if (result.status !== "ok" || !Array.isArray(result.items)) {
+		throw new Error("Telegram feed returned an invalid response");
+	}
+	return result.items;
+}
+
+async function preloadStartupMedia() {
+	const introStartedAt = performance.now();
+	const localImages = [...new Set([
+		"logo.jpg",
+		...Object.values(artistGroups).flatMap((group) => group.map((artist) => artist.image)),
+		...Array.from(document.querySelectorAll(".artist-social-icon"), (icon) => icon.getAttribute("src")),
+	])];
+	const imagesReady = Promise.all(localImages.map(preloadImage));
+	const telegramImagesReady = fetchTelegramItems("dvdfrite").then((items) => {
+		preloadedTelegramItems = items;
+		const thumbnails = items.slice(0, 5)
+			.map((post) => post.thumbnail)
+			.filter((source) => typeof source === "string" && source.startsWith("https://tg.i-c-a.su/"));
+		return Promise.all(thumbnails.map(preloadImage));
+	}).catch(() => {});
+	let timeoutId;
+	await Promise.race([
+		Promise.all([imagesReady, telegramImagesReady]),
+		new Promise((resolve) => {
+			timeoutId = window.setTimeout(resolve, 12000);
+		}),
+	]);
+	window.clearTimeout(timeoutId);
+	const minimumIntroTime = 700;
+	const remainingIntroTime = minimumIntroTime - (performance.now() - introStartedAt);
+	if (remainingIntroTime > 0) {
+		await new Promise((resolve) => window.setTimeout(resolve, remainingIntroTime));
+	}
+	siteIntro.classList.add("is-leaving");
+	siteIntro.setAttribute("aria-hidden", "true");
+	document.body.classList.remove("is-preloading");
+	window.setTimeout(() => siteIntro.remove(), prefersReducedMotion ? 0 : 400);
+}
 
 function renderDesignerTelegramPosts(items, channel) {
 	const posts = items.filter((item) => {
@@ -50,6 +124,11 @@ function renderDesignerTelegramPosts(items, channel) {
 			return false;
 		}
 	}).slice(0, 5);
+	const signature = posts.map((post) => post.link).join("|");
+	if (designerTelegramPosts.dataset.signature === signature) {
+		return;
+	}
+	designerTelegramPosts.dataset.signature = signature;
 	designerTelegramPosts.replaceChildren();
 
 	if (!posts.length) {
@@ -67,36 +146,31 @@ function renderDesignerTelegramPosts(items, channel) {
 		const thumbnail = typeof post.thumbnail === "string" && post.thumbnail.startsWith("https://tg.i-c-a.su/")
 			? post.thumbnail
 			: "";
-		const originalImage = typeof post.enclosure?.link === "string" && post.enclosure.link.startsWith("https://tg.i-c-a.su/")
-			? post.enclosure.link
-			: "";
-		if (!postText && !thumbnail && !originalImage) {
+		if (!postText && !thumbnail) {
 			continue;
 		}
 
-		if (thumbnail || originalImage) {
+		if (thumbnail) {
+			article.classList.add("has-image");
 			const imageLink = document.createElement("a");
 			imageLink.className = "designer-telegram__image-link";
 			imageLink.href = post.link;
 			imageLink.target = "_blank";
 			imageLink.rel = "noopener noreferrer";
 			imageLink.setAttribute("aria-label", "Открыть публикацию в Telegram");
-			const image = document.createElement("img");
+			const imageReady = preloadImage(thumbnail);
+			const image = preloadedImages.get(thumbnail).image;
 			image.className = "designer-telegram__image";
-			image.src = thumbnail || originalImage;
-			image.referrerPolicy = "no-referrer";
 			image.alt = "";
-			image.loading = "lazy";
-			if (thumbnail && originalImage && thumbnail !== originalImage) {
-				image.dataset.fallbackSrc = originalImage;
-			}
-			image.addEventListener("error", () => {
-				if (image.dataset.fallbackSrc) {
-					image.src = image.dataset.fallbackSrc;
-					delete image.dataset.fallbackSrc;
-					return;
+			imageReady.then((loaded) => {
+				if (!loaded) {
+					if (preloadedImages.get(thumbnail)?.image === image) {
+						preloadedImages.delete(thumbnail);
+					}
+					designerTelegramPosts.removeAttribute("data-signature");
+					imageLink.remove();
+					article.classList.remove("has-image");
 				}
-				imageLink.remove();
 			});
 			imageLink.append(image);
 			article.append(imageLink);
@@ -149,22 +223,17 @@ function getTelegramPostText(post) {
 
 async function updateDesignerTelegram(channel) {
 	const requestId = ++telegramRequestId;
-	const feedUrl = `https://tg.i-c-a.su/rss/${encodeURIComponent(channel)}`;
-	const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`;
 	designerTelegramPosts.setAttribute("aria-busy", "true");
 
 	try {
-		const response = await fetch(apiUrl, { cache: "no-store" });
-		if (!response.ok) {
-			throw new Error(`Telegram feed request failed: ${response.status}`);
-		}
-
-		const result = await response.json();
-		if (result.status !== "ok" || !Array.isArray(result.items)) {
-			throw new Error("Telegram feed returned an invalid response");
+		const items = channel === "dvdfrite" && preloadedTelegramItems
+			? preloadedTelegramItems
+			: await fetchTelegramItems(channel);
+		if (channel === "dvdfrite") {
+			preloadedTelegramItems = null;
 		}
 		if (requestId === telegramRequestId) {
-			renderDesignerTelegramPosts(result.items, channel);
+			renderDesignerTelegramPosts(items, channel);
 		}
 	} catch {
 		if (requestId === telegramRequestId) {
@@ -319,3 +388,4 @@ document.querySelector("[data-artist-next]").addEventListener("click", () => {
 });
 
 showArtist(activeArtistIndex);
+preloadStartupMedia();
