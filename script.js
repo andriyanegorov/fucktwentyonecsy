@@ -15,6 +15,7 @@ const artistNameBackground = document.querySelector(".artist-name-background");
 const artistImage = document.getElementById("artist-image");
 const artistPosition = document.querySelector(".artist-position");
 const artistPlaylist = document.querySelector(".artist-playlist");
+const artistPlaylistLink = document.querySelector(".artist-playlist-link");
 const artistDiscography = document.querySelector(".artist-discography");
 const artistSocials = document.querySelector(".artist-socials");
 const artistSocialLinks = {
@@ -66,11 +67,14 @@ function renderDesignerTelegramPosts(items, channel) {
 		const thumbnail = typeof post.thumbnail === "string" && post.thumbnail.startsWith("https://tg.i-c-a.su/")
 			? post.thumbnail
 			: "";
-		if (!postText && !thumbnail) {
+		const originalImage = typeof post.enclosure?.link === "string" && post.enclosure.link.startsWith("https://tg.i-c-a.su/")
+			? post.enclosure.link
+			: "";
+		if (!postText && !thumbnail && !originalImage) {
 			continue;
 		}
 
-		if (thumbnail) {
+		if (thumbnail || originalImage) {
 			const imageLink = document.createElement("a");
 			imageLink.className = "designer-telegram__image-link";
 			imageLink.href = post.link;
@@ -79,9 +83,21 @@ function renderDesignerTelegramPosts(items, channel) {
 			imageLink.setAttribute("aria-label", "Открыть публикацию в Telegram");
 			const image = document.createElement("img");
 			image.className = "designer-telegram__image";
-			image.src = thumbnail;
+			image.src = thumbnail || originalImage;
+			image.referrerPolicy = "no-referrer";
 			image.alt = "";
 			image.loading = "lazy";
+			if (thumbnail && originalImage && thumbnail !== originalImage) {
+				image.dataset.fallbackSrc = originalImage;
+			}
+			image.addEventListener("error", () => {
+				if (image.dataset.fallbackSrc) {
+					image.src = image.dataset.fallbackSrc;
+					delete image.dataset.fallbackSrc;
+					return;
+				}
+				imageLink.remove();
+			});
 			imageLink.append(image);
 			article.append(imageLink);
 		}
@@ -178,6 +194,7 @@ function showArtist(index) {
 	artistImage.alt = `${activeArtistGroup === "artists" ? "Артист" : "Дизайнер"} ${artist.name}`;
 	artistPosition.textContent = `${String(activeArtistIndex + 1).padStart(2, "0")} / ${String(currentGroup.length).padStart(2, "0")}`;
 	artistPlaylist.hidden = activeArtistGroup !== "artists" || !artist.hasPlaylist;
+	artistPlaylistLink.hidden = activeArtistGroup !== "artists" || !artist.hasPlaylist;
 	artistDiscography.hidden = activeArtistGroup !== "artists" || artist.hasPlaylist;
 	artistSocials.hidden = activeArtistGroup !== "artists" || (!artist.telegram && !artist.music);
 	designerTelegram.hidden = activeArtistGroup !== "designers" || !artist.telegramChannel;

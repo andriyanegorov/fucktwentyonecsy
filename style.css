@@ -26,7 +26,7 @@ body {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 1px;
   color: inherit;
   text-decoration: none;
 }
@@ -39,7 +39,7 @@ body {
 }
 
 .brand__name {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -251,12 +251,12 @@ display: grid;
   }
 
   .brand__logo {
-        width: 60px;
-        height: 60px;
+        width: 48px;
+        height: 48px;
   }
 
   .brand__name {
-    font-size: 15px;
+    font-size: 10;
   }
 
   .site-nav {
@@ -278,15 +278,27 @@ display: grid;
   }
 
   .artist-name-background {
-font-size: 111px;
+font-size: 95px;
   }
 
   .artist-name-background.is-designer {
-    font-size: 78px;
+    font-size: 70px;
   }
 }
 
 .artist-playlist[hidden] {
+  display: none;
+}
+
+.artist-playlist-link {
+  display: block;
+  width: fit-content;
+  margin: 12px auto 0;
+  color: #b3b3b3;
+  font-size: 14px;
+}
+
+.artist-playlist-link[hidden] {
   display: none;
 }
 
